@@ -1,26 +1,78 @@
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
+require('dotenv').config(); // Permite usar variáveis de ambiente no Render
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🗄️ CONFIGURAÇÃO DA BASE DE DADOS
-// Altera o utilizador, password ou base de dados se as tuas credenciais forem diferentes
+// 🗄️ CONFIGURAÇÃO DA BASE DE DADOS COMPATÍVEL COM A NUVEM (AIVEN)
 const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: '', 
-    database: 'chefia' 
+    host: process.env.DB_HOST || 'mysql-dfc7227-projeto-si.j.aivencloud.com',
+    user: process.env.DB_USER || 'avnadmin',
+    password: process.env.DB_PASSWORD || 'AVNS_UB_iMRvxZOrvrMF9MuR', // ⚠️ CLICA NO OLHO NO SITE DO AIVEN E COLA A TUA PASSWORD AQUI
+    database: process.env.DB_NAME || 'defaultdb', // Ligação inicial à base padrão do Aiven
+    port: process.env.DB_PORT || 19117,
+    ssl: {
+        rejectUnauthorized: false // Obrigatório para o Aiven aceitar ligações externas seguras
+    }
 });
 
+// 🔄 LIGAÇÃO AO SERVIDOR E CRIAÇÃO AUTOMÁTICA DAS TABELAS
 db.connect((err) => {
     if (err) {
         console.error('❌ Erro crítico ao ligar ao MySQL:', err);
         return;
     }
-    console.log('✅ Ligado com sucesso à base de dados MySQL!');
+    console.log('✅ Ligado ao servidor MySQL do Aiven!');
+
+    // 1. Criar a base de dados 'chefia' caso ela não exista
+    db.query('CREATE DATABASE IF NOT EXISTS chefia', (err) => {
+        if (err) {
+            console.error('❌ Erro ao criar base de dados:', err);
+            return;
+        }
+        
+        // 2. Apontar a ligação para a base de dados 'chefia'
+        db.query('USE chefia', (err) => {
+            if (err) {
+                console.error('❌ Erro ao selecionar a base de dados:', err);
+                return;
+            }
+
+            // 3. Criar a tabela 'utilizadores'
+            const tblUtilizadores = `
+                CREATE TABLE IF NOT EXISTS utilizadores (
+                    email VARCHAR(255) PRIMARY KEY,
+                    password VARCHAR(255) NOT NULL
+                );`;
+            
+            db.query(tblUtilizadores, (err) => {
+                if (err) console.error('❌ Erro ao criar tabela utilizadores:', err);
+            });
+
+            // 4. Criar a tabela 'historico'
+            const tblHistorico = `
+                CREATE TABLE IF NOT EXISTS historico (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    email VARCHAR(255),
+                    ingredientes TEXT,
+                    receita TEXT,
+                    fixado TINYINT(1) DEFAULT 0,
+                    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (email) REFERENCES utilizadores(email) ON DELETE CASCADE
+                );`;
+            
+            db.query(tblHistorico, (err) => {
+                if (err) {
+                    console.error('❌ Erro ao criar tabela historico:', err);
+                } else {
+                    console.log('✅ Base de dados "chefia" e tabelas estruturadas com sucesso no Aiven!');
+                }
+            });
+        });
+    });
 });
 
 // 💾 MEMÓRIA TEMPORÁRIA: Códigos de recuperação de password
@@ -100,7 +152,7 @@ app.get('/historico/:email', (req, res) => {
             console.error('❌ Erro na query do histórico:', err);
             return res.status(500).json({ 
                 erro: 'Erro ao carregar histórico.', 
-                detalhe: 'Garante que correste o comando ALTER TABLE no teu MySQL para adicionar a coluna "fixado".' 
+                dethe: 'Erro na consulta do histórico.' 
             });
         }
         res.json(results);
@@ -125,7 +177,7 @@ app.put('/historico/fixar/:id', (req, res) => {
     
     db.query(query, [fixado, req.params.id], (err) => {
         if (err) return res.status(500).json({ erro: 'Erro ao alterar o estado de afixação da receita.' });
-        res.json({ mensagem: 'Estado de afixação atualizado com sucesso!' });
+        res.json({ mensagem: 'Estado de afixação updated com sucesso!' });
     });
 });
 
@@ -148,7 +200,7 @@ app.get('/publico/receita/:id', (req, res) => {
 // ==========================================
 // 🚀 INICIALIZAÇÃO DO SERVIDOR
 // ==========================================
-const PORT = 3001;
+const PORT = process.env.PORT || 3001; // Render atribui a porta automaticamente na nuvem
 app.listen(PORT, () => {
     console.log(`🚀 Servidor do chefIA totalmente operacional na porta ${PORT}`);
 });
