@@ -8,11 +8,12 @@ app.use(cors());
 app.use(express.json());
 
 // 🗄️ CONFIGURAÇÃO DA BASE DE DADOS COMPATÍVEL COM A NUVEM (AIVEN)
+// Removemos os textos fixos. Agora o código apanha TUDO em segredo das variáveis de ambiente!
 const db = mysql.createConnection({
-    host: process.env.DB_HOST || 'mysql-dfc7227-projeto-si.j.aivencloud.com',
-    user: process.env.DB_USER || 'avnadmin',
-    password: process.env.DB_PASSWORD || 'AVNS_UB_iMRvxZOrvrMF9MuR', // ⚠️ CLICA NO OLHO NO SITE DO AIVEN E COLA A TUA PASSWORD AQUI
-    database: process.env.DB_NAME || 'defaultdb', // Ligação inicial à base padrão do Aiven
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD, 
+    database: process.env.DB_NAME || 'defaultdb', 
     port: process.env.DB_PORT || 19117,
     ssl: {
         rejectUnauthorized: false // Obrigatório para o Aiven aceitar ligações externas seguras
@@ -172,7 +173,7 @@ app.post('/historico', (req, res) => {
 
 // 📌 Alternar Estado de Afixação (Pin / Unpin)
 app.put('/historico/fixar/:id', (req, res) => {
-    const { fixado } = req.body; // Espera receber 1 ou 0
+    const { fixado } = req.body; 
     const query = "UPDATE historico SET fixado = ? WHERE id = ?";
     
     db.query(query, [fixado, req.params.id], (err) => {
@@ -200,7 +201,7 @@ app.get('/publico/receita/:id', (req, res) => {
 // ==========================================
 // 🚀 INICIALIZAÇÃO DO SERVIDOR
 // ==========================================
-const PORT = process.env.PORT || 3001; // Render atribui a porta automaticamente na nuvem
+const PORT = process.env.PORT || 3001; 
 app.listen(PORT, () => {
     console.log(`🚀 Servidor do chefIA totalmente operacional na porta ${PORT}`);
 });
